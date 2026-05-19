@@ -1,0 +1,137 @@
+<div class="rooms-page">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Habitaciones</h1>
+      <p class="page-subtitle">Consulta disponibilidad por fechas y capacidad</p>
+    </div>
+  </div>
+
+  <div class="section-card search-card">
+    <div class="section-header">
+      <h2 class="section-title">Filtros de búsqueda</h2>
+    </div>
+    <div class="section-body search-filters">
+
+      <div class="filter-group">
+        <label class="filter-label">Check-in</label>
+        <p-datepicker
+          [(ngModel)]="checkInDate"
+          [minDate]="todayDate"
+          dateFormat="dd/mm/yy"
+          [showIcon]="true"
+          [showButtonBar]="false"
+          placeholder="Fecha de entrada"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+          appendTo="body"
+          (onSelect)="onCheckInChange()"
+        />
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">Check-out</label>
+        <p-datepicker
+          [(ngModel)]="checkOutDate"
+          [minDate]="minCheckOut"
+          dateFormat="dd/mm/yy"
+          [showIcon]="true"
+          [showButtonBar]="false"
+          placeholder="Fecha de salida"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+          appendTo="body"
+        />
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">Huéspedes</label>
+        <p-inputNumber
+          [(ngModel)]="guests"
+          [min]="1"
+          [max]="10"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          decrementButtonClass="p-button-secondary"
+          incrementButtonClass="p-button-secondary"
+          styleClass="w-full"
+          inputStyleClass="text-center w-full"
+        />
+      </div>
+
+      <div class="filter-action">
+        <p-button
+          label="Buscar"
+          icon="pi pi-search"
+          (onClick)="search()"
+          [loading]="loading"
+          styleClass="w-full"
+        />
+      </div>
+
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Habitaciones disponibles</h2>
+        <p class="section-subtitle">{{ rooms.length }} habitación(es) disponible(s)</p>
+      </div>
+    </div>
+
+    <div class="section-body">
+      <p-table
+        [value]="rooms"
+        [loading]="loading"
+        responsiveLayout="scroll"
+        styleClass="p-datatable-sm p-datatable-striped"
+      >
+        <ng-template pTemplate="header">
+          <tr>
+            <th>N.° Hab.</th>
+            <th>Piso</th>
+            <th>Tipo</th>
+            <th>Categoría</th>
+            <th>Hotel</th>
+            <th>Capacidad</th>
+            <th class="text-right">Precio/noche (PEN)</th>
+            <th>Velocity</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-r>
+          <tr>
+            <td><strong>{{ r.roomNumber }}</strong></td>
+            <td>{{ r.floor }}</td>
+            <td>{{ r.roomTypeName }}</td>
+            <td>
+              <p-tag [value]="categoryLabel(r.category)" severity="info" />
+            </td>
+            <td>{{ r.hotelName }}</td>
+            <td>{{ r.maxGuests }} pers.</td>
+            <td class="text-right"><strong>{{ r.basePriceNight | number:'1.2-2' }}</strong></td>
+            <td>
+              <p-tag *ngIf="r.allowsVelocity"  value="Velocity" severity="warn" />
+              <span *ngIf="!r.allowsVelocity" class="text-muted">—</span>
+            </td>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="8" class="empty-msg">
+              <i class="pi pi-inbox"></i>
+              <span>
+                {{ searched
+                  ? 'No hay habitaciones disponibles para el período seleccionado'
+                  : 'Realice una búsqueda para ver disponibilidad' }}
+              </span>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+
+</div>

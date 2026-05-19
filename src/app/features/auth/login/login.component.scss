@@ -1,0 +1,96 @@
+/* ── Full-page split layout ─────────────────────────────────── */
+.login-page {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Left image panel ───────────────────────────────────────── */
+.login-brand {
+  flex: 1;
+  background-image: url('https://images.unsplash.com/photo-1618773928121-c32242e63f39?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D=webp');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      135deg,
+      rgba(15, 23, 42, 0.2) 0%,
+      rgba(15, 23, 42, 0.05) 100%
+    );
+  }
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+}
+
+/* ── Right form panel ───────────────────────────────────────── */
+.login-form-panel {
+  flex: 0 0 420px;
+  background: var(--p-surface-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 2rem;
+  border-left: 1px solid var(--p-surface-border);
+
+  @media (max-width: 768px) {
+    flex: 1;
+    border-left: none;
+  }
+}
+
+.login-form-wrapper {
+  width: 100%;
+  max-width: 360px;
+}
+
+/* Logo */
+.form-brand {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.form-logo {
+  height: 72px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* Header */
+.form-header {
+  text-align: center;
+  margin-bottom: 2rem;
+
+  h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0 0 0.4rem;
+    color: var(--p-text-color);
+  }
+
+  p {
+    font-size: 0.875rem;
+    color: var(--p-text-muted-color);
+    margin: 0;
+  }
+}
+
+/* Form fields */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+
+  label {
+    font-size: 0.825rem;
+    font-weight: 600;
+    color: var(--p-text-color);
+  }
+}

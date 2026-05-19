@@ -1,0 +1,132 @@
+/* ── Page header ───────────────────────────────────────────── */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1.75rem;
+}
+
+.page-title {
+  margin: 0 0 0.2rem;
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--p-text-color);
+}
+
+.page-subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--p-text-muted-color);
+}
+
+/* ── Section card ──────────────────────────────────────────── */
+.section-card {
+  background: var(--p-surface-card);
+  border: 1px solid var(--p-surface-border);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  &.search-card {
+    margin-bottom: 1.5rem;
+  }
+}
+
+.section-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--p-surface-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-title {
+  margin: 0 0 0.15rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--p-text-color);
+}
+
+.section-subtitle {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--p-text-muted-color);
+}
+
+.section-body {
+  flex: 1;
+  overflow-x: auto;
+
+  &.search-filters {
+    padding: 1.25rem 1.5rem;
+    overflow-x: visible;
+  }
+}
+
+/* ── Search filters layout ─────────────────────────────────── */
+.search-filters {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  align-items: flex-end;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.filter-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--p-text-muted-color);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.filter-action {
+  display: flex;
+  gap: 0.5rem;
+  min-width: 120px;
+}
+
+/* ── Empty state ───────────────────────────────────────────── */
+.empty-msg {
+  text-align: center;
+  padding: 3.5rem 1rem !important;
+  color: var(--p-text-muted-color) !important;
+
+  i {
+    display: block;
+    font-size: 2.25rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.35;
+  }
+
+  span {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--p-text-muted-color);
+  }
+}
+
+/* ── Text utilities ────────────────────────────────────────── */
+.text-right {
+  text-align: right;
+}
+
+.text-muted {
+  color: var(--p-text-muted-color);
+}

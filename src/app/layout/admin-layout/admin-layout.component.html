@@ -1,0 +1,114 @@
+<div class="layout-wrapper">
+
+  <!-- ── Mobile backdrop ────────────────────────────────────── -->
+  @if (sidebarOpen()) {
+    <div class="sidebar-backdrop" (click)="closeSidebar()"></div>
+  }
+
+  <!-- ── Sidebar ────────────────────────────────────────────── -->
+  <nav class="layout-sidebar" [class.sidebar--open]="sidebarOpen()">
+
+    <!-- Brand -->
+    <div class="sidebar-header">
+      <img src="/logoLuxeStay.webp" alt="LuxeStay" class="sidebar-logo" />
+      <div class="sidebar-header-text">
+        <h1 class="sidebar-title">LuxeStay</h1>
+        <p class="sidebar-subtitle">Admin Panel</p>
+      </div>
+      <button class="sidebar-close-btn" (click)="closeSidebar()" type="button" aria-label="Cerrar menú">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+
+    <!-- Navigation -->
+    <div class="sidebar-nav">
+      <p class="nav-section-label">Navegación Principal</p>
+
+      <ul class="sidebar-menu">
+        @for (item of menuItems(); track item.label) {
+          <li>
+            <a
+              pRipple
+              [routerLink]="item.routerLink"
+              routerLinkActive="active-link"
+              [routerLinkActiveOptions]="{ exact: false }"
+              class="sidebar-item"
+              (click)="closeSidebar()"
+            >
+              <i [class]="item.icon" class="sidebar-icon"></i>
+              <span class="sidebar-label">{{ item.label }}</span>
+            </a>
+          </li>
+        }
+      </ul>
+    </div>
+
+    <div class="sidebar-footer"></div>
+
+  </nav>
+
+  <!-- ── Main area: topbar + page content ────────────────────── -->
+  <div class="layout-main-container">
+
+    <!-- Topbar -->
+    <header class="layout-topbar">
+
+      <div class="topbar-left">
+        <button
+          class="topbar-icon-btn hamburger-btn"
+          (click)="toggleSidebar()"
+          type="button"
+          aria-label="Abrir menú"
+        >
+          <i class="pi pi-bars"></i>
+        </button>
+        <h2 class="topbar-title">{{ pageTitle() }}</h2>
+      </div>
+
+      <div class="topbar-center"></div>
+
+      <div class="topbar-actions">
+
+        <!-- Theme toggle -->
+        <button
+          class="topbar-icon-btn"
+          (click)="toggleDark()"
+          [title]="isDark() ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
+          type="button"
+        >
+          <i [class]="isDark() ? 'pi pi-sun' : 'pi pi-moon'"></i>
+        </button>
+
+        <!-- Divider -->
+        <span class="topbar-divider"></span>
+
+        <!-- User info -->
+        <div class="topbar-user">
+          <div class="user-avatar">{{ userInitials }}</div>
+          <div class="topbar-user-info">
+            <span class="topbar-user-name">{{ userName }}</span>
+            <span class="topbar-user-role">{{ userRole }}</span>
+          </div>
+        </div>
+
+        <!-- Logout -->
+        <button
+          class="topbar-icon-btn topbar-logout"
+          (click)="logout()"
+          title="Cerrar sesión"
+          type="button"
+        >
+          <i class="pi pi-sign-out"></i>
+        </button>
+
+      </div>
+    </header>
+
+    <!-- Page content -->
+    <main class="layout-content">
+      <router-outlet />
+    </main>
+
+  </div>
+
+</div>

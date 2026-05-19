@@ -1,0 +1,146 @@
+<p-toast />
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Gestión de Usuarios</h1>
+    <p class="page-subtitle">Administra los administradores y gestores del sistema</p>
+  </div>
+  <p-button
+    label="Nuevo usuario"
+    icon="pi pi-plus"
+    (onClick)="openNewUserDialog()"
+  />
+</div>
+
+<div class="section-card">
+  <div class="section-header">
+    <div>
+      <h2 class="section-title">Usuarios del sistema</h2>
+      <p class="section-subtitle">{{ users.length }} usuario(s) registrado(s)</p>
+    </div>
+  </div>
+
+  <div class="section-body">
+    <p-table
+      [value]="users"
+      [loading]="loading"
+      [paginator]="true"
+      [rows]="15"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="{first}–{last} de {totalRecords} usuarios"
+      dataKey="id"
+      styleClass="p-datatable-sm p-datatable-striped"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Nombre</th>
+          <th>Email</th>
+          <th>Teléfono</th>
+          <th>Rol</th>
+          <th>Proveedor</th>
+          <th>Estado</th>
+          <th>Fecha de creación</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-user>
+        <tr>
+          <td>{{ user.fullName }}</td>
+          <td>{{ user.email }}</td>
+          <td>{{ user.phone ?? '—' }}</td>
+          <td>
+            <p-tag
+              [value]="roleLabel(user.role)"
+              [severity]="roleSeverity(user.role)"
+            />
+          </td>
+          <td>{{ providerLabel(user.authProvider) }}</td>
+          <td>
+            <p-tag
+              [value]="user.active ? 'Activo' : 'Inactivo'"
+              [severity]="user.active ? 'success' : 'danger'"
+            />
+          </td>
+          <td>{{ user.createdAt | date: 'dd/MM/yyyy' }}</td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="7" class="empty-msg">
+            <i class="pi pi-inbox"></i>
+            <span>No hay usuarios registrados</span>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+
+<p-dialog
+  header="Nuevo usuario administrativo"
+  [(visible)]="showDialog"
+  [modal]="true"
+  [style]="{ width: '460px' }"
+  [draggable]="false"
+>
+  @if (errorMsg) {
+    <p-message severity="error" [text]="errorMsg" styleClass="mb-3 w-full" />
+  }
+
+  <div class="dialog-form">
+    <div class="field">
+      <label>Nombre completo *</label>
+      <input pInputText [(ngModel)]="form.fullName" placeholder="Juan Pérez" class="w-full" />
+    </div>
+
+    <div class="field">
+      <label>Email *</label>
+      <input pInputText type="email" [(ngModel)]="form.email" placeholder="juan@ejemplo.pe" class="w-full" />
+    </div>
+
+    <div class="field">
+      <label>Contraseña *</label>
+      <p-password
+        [(ngModel)]="form.password"
+        [feedback]="true"
+        [toggleMask]="true"
+        styleClass="w-full"
+        inputStyleClass="w-full"
+        placeholder="Mín. 8 caracteres, mayúscula y número"
+      />
+    </div>
+
+    <div class="field">
+      <label>Teléfono <span class="optional">(opcional)</span></label>
+      <input pInputText type="tel" [(ngModel)]="form.phone" placeholder="+51 999 999 999" class="w-full" />
+    </div>
+
+    <div class="field">
+      <label>Rol *</label>
+      <p-select
+        [(ngModel)]="form.role"
+        [options]="roleOptions"
+        optionLabel="label"
+        optionValue="value"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button
+      label="Cancelar"
+      severity="secondary"
+      [text]="true"
+      (onClick)="showDialog = false"
+    />
+    <p-button
+      label="Crear usuario"
+      icon="pi pi-check"
+      [loading]="saving"
+      (onClick)="saveUser()"
+    />
+  </ng-template>
+</p-dialog>

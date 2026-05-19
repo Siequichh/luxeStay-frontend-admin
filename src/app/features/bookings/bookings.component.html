@@ -1,0 +1,76 @@
+<div class="bookings-page">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Gestión de Reservas</h1>
+      <p class="page-subtitle">Consulta y administra todas las reservas de la plataforma</p>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Reservas</h2>
+        <p class="section-subtitle">{{ totalElements }} reserva(s) registrada(s)</p>
+      </div>
+    </div>
+
+    <div class="section-body">
+      <p-table
+        [value]="bookings"
+        [loading]="loading"
+        responsiveLayout="scroll"
+        styleClass="p-datatable-sm p-datatable-striped"
+      >
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Código</th>
+            <th>Huésped</th>
+            <th>Email</th>
+            <th>Habitación</th>
+            <th>Check-in</th>
+            <th>Check-out</th>
+            <th class="text-right">Total (PEN)</th>
+            <th>Tipo</th>
+            <th>Estado</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-b>
+          <tr>
+            <td><code class="ref-code">{{ b.referenceCode }}</code></td>
+            <td>{{ b.guestName ?? '—' }}</td>
+            <td>{{ b.guestEmail }}</td>
+            <td>{{ b.roomNumber }} / {{ b.roomTypeName }}</td>
+            <td>{{ b.checkInDate | date:'dd/MM/yy' }}</td>
+            <td>{{ b.checkOutDate ? (b.checkOutDate | date:'dd/MM/yy') : '—' }}</td>
+            <td class="text-right"><strong>{{ b.totalAmount | number:'1.2-2' }}</strong></td>
+            <td>{{ b.bookingType === 'NIGHTLY' ? 'Noche' : 'Horas' }}</td>
+            <td>
+              <p-tag [value]="statusLabel(b.status)" [severity]="statusSeverity(b.status)" />
+            </td>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="9" class="empty-msg">
+              <i class="pi pi-inbox"></i>
+              <span>No hay reservas registradas</span>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+
+    <div class="section-footer">
+      <p-paginator
+        [rows]="pageSize"
+        [totalRecords]="totalElements"
+        [rowsPerPageOptions]="[10, 20, 50]"
+        (onPageChange)="onPageChange($event)"
+      />
+    </div>
+  </div>
+
+</div>

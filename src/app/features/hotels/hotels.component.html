@@ -1,0 +1,242 @@
+<p-toast />
+
+<div class="hotels-page">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Hoteles</h1>
+      <p class="page-subtitle">
+        {{ isAdmin()
+          ? 'Todos los hoteles registrados en la plataforma LuxeStay'
+          : 'Gestiona la información de tu establecimiento' }}
+      </p>
+    </div>
+  </div>
+
+  <!-- ── API error state ─────────────────────────────────── -->
+  @if (apiError) {
+    <div class="section-card error-card">
+      <div class="error-body">
+        <i class="pi pi-exclamation-triangle"></i>
+        <h3>No se pudo conectar con el backend</h3>
+        <p>Asegúrate de que el servidor esté corriendo en
+           <code>localhost:8080</code>.</p>
+        <p-button label="Reintentar" icon="pi pi-refresh" severity="secondary"
+                  (onClick)="reload()" size="small" />
+      </div>
+    </div>
+  }
+
+  <!-- ── Hotels table ───────────────────────────────────── -->
+  @if (!apiError) {
+    <div class="section-card">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">
+            {{ isAdmin() ? 'Hoteles registrados' : 'Mis Hoteles' }}
+          </h2>
+          <p class="section-subtitle">{{ hotels.length }} hotel(es)</p>
+        </div>
+      </div>
+
+      <div class="section-body">
+        <p-table
+          [value]="hotels"
+          [loading]="loading"
+          responsiveLayout="scroll"
+          styleClass="p-datatable-sm p-datatable-striped"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th>Nombre</th>
+              <th>Ubicación</th>
+              @if (isAdmin()) {
+                <th>Gestor</th>
+              }
+              <th>Estrellas</th>
+              <th class="text-center">Tipos</th>
+              <th class="text-center">Habs.</th>
+              <th>Estado</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="body" let-h>
+            <tr>
+              <td>
+                <div class="hotel-name">{{ h.name }}</div>
+                <div class="hotel-address">{{ h.address }}</div>
+              </td>
+              <td>
+                <div class="hotel-name">{{ h.districtName }}</div>
+                <div class="hotel-address">{{ h.provinceName }}, {{ h.departmentName }}</div>
+              </td>
+              @if (isAdmin()) {
+                <td>
+                  <span *ngIf="h.managerName">{{ h.managerName }}</span>
+                  <span *ngIf="!h.managerName" class="text-muted">Sin asignar</span>
+                </td>
+              }
+              <td>
+                <span class="stars" *ngIf="h.starRating">{{ starLabel(h.starRating) }}</span>
+                <span *ngIf="!h.starRating" class="text-muted">—</span>
+              </td>
+              <td class="text-center">{{ h.roomTypeCount }}</td>
+              <td class="text-center">{{ h.roomCount }}</td>
+              <td>
+                <p-tag
+                  [value]="h.active ? 'Activo' : 'Inactivo'"
+                  [severity]="h.active ? 'success' : 'danger'"
+                />
+              </td>
+              <td class="text-center">
+                <p-button
+                  icon="pi pi-pencil"
+                  [text]="true"
+                  severity="secondary"
+                  size="small"
+                  (onClick)="openEdit(h)"
+                  pTooltip="Editar hotel"
+                  tooltipPosition="left"
+                />
+              </td>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td [attr.colspan]="isAdmin() ? 8 : 7" class="empty-msg">
+                <i class="pi pi-building"></i>
+                <span>No hay hoteles disponibles</span>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    </div>
+  }
+
+</div>
+
+<!-- ── Edit Dialog ──────────────────────────────────────────── -->
+<p-dialog
+  [(visible)]="editDialogVisible"
+  [header]="'Editar: ' + (editingHotel?.name ?? '')"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '520px', maxWidth: '95vw' }"
+  (onHide)="closeEdit()"
+>
+  <div class="edit-form">
+
+    @if (editError) {
+      <p-message severity="error" [text]="editError" styleClass="mb-3 w-full" />
+    }
+
+    <div class="field">
+      <label>Nombre</label>
+      <input pInputText [(ngModel)]="editForm.name" class="w-full" placeholder="Nombre del hotel" />
+    </div>
+
+    <div class="field">
+      <label>Descripción</label>
+      <textarea
+        pTextarea
+        [(ngModel)]="editForm.description"
+        rows="3"
+        class="w-full"
+        placeholder="Descripción del hotel"
+        autoResize="true"
+      ></textarea>
+    </div>
+
+    <div class="field">
+      <label>Dirección</label>
+      <input pInputText [(ngModel)]="editForm.address" class="w-full" placeholder="Dirección completa" />
+    </div>
+
+    <div class="field field--sm">
+      <label>Estrellas (1–5)</label>
+      <p-inputNumber
+        [(ngModel)]="editForm.starRating"
+        [min]="1"
+        [max]="5"
+        [showButtons]="true"
+        buttonLayout="horizontal"
+        decrementButtonClass="p-button-secondary"
+        incrementButtonClass="p-button-secondary"
+        styleClass="star-input"
+        inputStyleClass="text-center"
+      />
+    </div>
+
+    <!-- Ubicación: -->
+    <div class="field">
+      <label>Ubicación</label>
+      <div class="ubigeo-row">
+
+        <p-select
+          [(ngModel)]="selectedDep"
+          [options]="departments"
+          optionLabel="name"
+          placeholder="Departamento"
+          [loading]="loadingDeps"
+          [disabled]="loadingDeps"
+          styleClass="w-full"
+          (onChange)="onDepChange()"
+          appendTo="body"
+        />
+
+        <p-select
+          [(ngModel)]="selectedProv"
+          [options]="provinces"
+          optionLabel="name"
+          placeholder="Provincia"
+          [loading]="loadingProvs"
+          [disabled]="!selectedDep || loadingProvs"
+          styleClass="w-full"
+          (onChange)="onProvChange()"
+          appendTo="body"
+        />
+
+        <p-select
+          [(ngModel)]="selectedDist"
+          [options]="districts"
+          optionLabel="districtName"
+          placeholder="Distrito"
+          [loading]="loadingDists"
+          [disabled]="!selectedProv || loadingDists"
+          styleClass="w-full"
+          appendTo="body"
+        />
+
+      </div>
+
+      @if (selectedDist) {
+        <small class="ubigeo-hint">
+          <i class="pi pi-map-marker"></i>
+          {{ selectedDist.districtName }}, {{ selectedDist.provinceName }}, {{ selectedDist.departmentName }}
+          &mdash; <code>{{ selectedDist.reniecCode }}</code>
+        </small>
+      }
+    </div>
+
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button
+      label="Cancelar"
+      icon="pi pi-times"
+      severity="secondary"
+      [text]="true"
+      (onClick)="closeEdit()"
+      [disabled]="saving"
+    />
+    <p-button
+      label="Guardar cambios"
+      icon="pi pi-check"
+      (onClick)="saveEdit()"
+      [loading]="saving"
+    />
+  </ng-template>
+</p-dialog>

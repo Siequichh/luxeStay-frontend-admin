@@ -1,0 +1,68 @@
+<div class="login-page">
+
+  <!-- Left: photo panel -->
+  <div class="login-brand"></div>
+
+  <!-- Right: form panel -->
+  <div class="login-form-panel">
+    <div class="login-form-wrapper">
+
+      <!-- Big centered logo -->
+      <div class="form-brand">
+        <img src="/logoLuxeStay.webp" alt="LuxeStay" class="form-logo" />
+      </div>
+
+      <div class="form-header">
+        <h2>¡Bienvenido!</h2>
+        <p>Inicia sesión en el panel de administración</p>
+      </div>
+
+      @if (errorMsg) {
+        <p-message severity="error" [text]="errorMsg" styleClass="mb-4 w-full" />
+      }
+
+      <form (ngSubmit)="onSubmit()" autocomplete="on">
+        <div class="field">
+          <label for="email">Correo electrónico</label>
+          <input
+            pInputText
+            id="email"
+            type="email"
+            [(ngModel)]="credentials.email"
+            name="email"
+            placeholder="admin@gmail.com"
+            class="w-full"
+            autocomplete="email"
+            required
+          />
+        </div>
+
+        <div class="field">
+          <label for="password">Contraseña</label>
+          <p-password
+            id="password"
+            [(ngModel)]="credentials.password"
+            name="password"
+            [feedback]="false"
+            [toggleMask]="true"
+            styleClass="w-full"
+            inputStyleClass="w-full"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            required
+          />
+        </div>
+
+        <p-button
+          type="submit"
+          label="Iniciar sesión"
+          icon="pi pi-sign-in"
+          styleClass="w-full mt-2"
+          [loading]="loading"
+        />
+      </form>
+
+    </div>
+  </div>
+
+</div>
