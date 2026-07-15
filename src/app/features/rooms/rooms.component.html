@@ -1,137 +1,129 @@
-<div class="rooms-page">
+<p-toast />
+<p-confirmDialog [draggable]="false" />
 
-  <div class="page-header">
+<div class="card px-4">
+
+  <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
     <div>
-      <h1 class="page-title">Habitaciones</h1>
-      <p class="page-subtitle">Consulta disponibilidad por fechas y capacidad</p>
+      <h2 class="text-2xl font-bold m-0" style="color: var(--text-color)">Habitaciones</h2>
+      <p class="m-0 mt-1" style="color: var(--text-color-secondary)">
+        Inventario físico de habitaciones del hotel
+      </p>
     </div>
+    <p-button label="Nueva habitación" icon="pi pi-plus" (onClick)="openCreate()" />
   </div>
 
-  <div class="section-card search-card">
-    <div class="section-header">
-      <h2 class="section-title">Filtros de búsqueda</h2>
+  <!-- Selector de hotel -->
+  @if (hotels().length > 0 && (isAdmin() || hotels().length > 1)) {
+    <div class="mb-4">
+      <p-select [ngModel]="selectedHotelId()"
+                (ngModelChange)="selectedHotelId.set($event); onHotelChange()"
+                [options]="hotels()" optionLabel="name" optionValue="id"
+                placeholder="Seleccionar hotel" styleClass="w-64" appendTo="body" />
     </div>
-    <div class="section-body search-filters">
+  }
 
-      <div class="filter-group">
-        <label class="filter-label">Check-in</label>
-        <p-datepicker
-          [(ngModel)]="checkInDate"
-          [minDate]="todayDate"
-          dateFormat="dd/mm/yy"
-          [showIcon]="true"
-          [showButtonBar]="false"
-          placeholder="Fecha de entrada"
-          styleClass="w-full"
-          inputStyleClass="w-full"
-          appendTo="body"
-          (onSelect)="onCheckInChange()"
-        />
-      </div>
+  <p-table [value]="rooms()" [loading]="loading()" styleClass="p-datatable-sm p-datatable-striped"
+           responsiveLayout="scroll">
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Nro.</th>
+        <th>Piso</th>
+        <th>Tipo de habitación</th>
+        <th>Estado</th>
+        <th>Notas</th>
+        <th style="width: 8rem">Acciones</th>
+      </tr>
+    </ng-template>
 
-      <div class="filter-group">
-        <label class="filter-label">Check-out</label>
-        <p-datepicker
-          [(ngModel)]="checkOutDate"
-          [minDate]="minCheckOut"
-          dateFormat="dd/mm/yy"
-          [showIcon]="true"
-          [showButtonBar]="false"
-          placeholder="Fecha de salida"
-          styleClass="w-full"
-          inputStyleClass="w-full"
-          appendTo="body"
-        />
-      </div>
+    <ng-template pTemplate="body" let-r>
+      <tr>
+        <td><strong>{{ r.roomNumber }}</strong></td>
+        <td>{{ r.floor }}</td>
+        <td>{{ r.roomTypeName }}</td>
+        <td>
+          <p-tag [value]="r.statusDisplay" [severity]="statusSeverity(r.status)" />
+        </td>
+        <td>
+          <span style="color: var(--text-color-secondary); font-size: 0.875rem">
+            {{ r.notes || '—' }}
+          </span>
+        </td>
+        <td>
+          <div class="flex gap-1">
+            <p-button icon="pi pi-pencil" severity="info" [text]="true" [rounded]="true"
+                      pTooltip="Editar" (onClick)="openEdit(r)" />
+            <p-button icon="pi pi-trash" severity="danger" [text]="true" [rounded]="true"
+                      pTooltip="Desactivar" (onClick)="confirmDeactivate(r)" />
+          </div>
+        </td>
+      </tr>
+    </ng-template>
 
-      <div class="filter-group">
-        <label class="filter-label">Huéspedes</label>
-        <p-inputNumber
-          [(ngModel)]="guests"
-          [min]="1"
-          [max]="10"
-          [showButtons]="true"
-          buttonLayout="horizontal"
-          decrementButtonClass="p-button-secondary"
-          incrementButtonClass="p-button-secondary"
-          styleClass="w-full"
-          inputStyleClass="text-center w-full"
-        />
-      </div>
-
-      <div class="filter-action">
-        <p-button
-          label="Buscar"
-          icon="pi pi-search"
-          (onClick)="search()"
-          [loading]="loading"
-          styleClass="w-full"
-        />
-      </div>
-
-    </div>
-  </div>
-
-  <div class="section-card">
-    <div class="section-header">
-      <div>
-        <h2 class="section-title">Habitaciones disponibles</h2>
-        <p class="section-subtitle">{{ rooms.length }} habitación(es) disponible(s)</p>
-      </div>
-    </div>
-
-    <div class="section-body">
-      <p-table
-        [value]="rooms"
-        [loading]="loading"
-        responsiveLayout="scroll"
-        styleClass="p-datatable-sm p-datatable-striped"
-      >
-        <ng-template pTemplate="header">
-          <tr>
-            <th>N.° Hab.</th>
-            <th>Piso</th>
-            <th>Tipo</th>
-            <th>Categoría</th>
-            <th>Hotel</th>
-            <th>Capacidad</th>
-            <th class="text-right">Precio/noche (PEN)</th>
-            <th>Velocity</th>
-          </tr>
-        </ng-template>
-
-        <ng-template pTemplate="body" let-r>
-          <tr>
-            <td><strong>{{ r.roomNumber }}</strong></td>
-            <td>{{ r.floor }}</td>
-            <td>{{ r.roomTypeName }}</td>
-            <td>
-              <p-tag [value]="categoryLabel(r.category)" severity="info" />
-            </td>
-            <td>{{ r.hotelName }}</td>
-            <td>{{ r.maxGuests }} pers.</td>
-            <td class="text-right"><strong>{{ r.basePriceNight | number:'1.2-2' }}</strong></td>
-            <td>
-              <p-tag *ngIf="r.allowsVelocity"  value="Velocity" severity="warn" />
-              <span *ngIf="!r.allowsVelocity" class="text-muted">—</span>
-            </td>
-          </tr>
-        </ng-template>
-
-        <ng-template pTemplate="emptymessage">
-          <tr>
-            <td colspan="8" class="empty-msg">
-              <i class="pi pi-inbox"></i>
-              <span>
-                {{ searched
-                  ? 'No hay habitaciones disponibles para el período seleccionado'
-                  : 'Realice una búsqueda para ver disponibilidad' }}
-              </span>
-            </td>
-          </tr>
-        </ng-template>
-      </p-table>
-    </div>
-  </div>
+    <ng-template pTemplate="empty">
+      <tr>
+        <td colspan="6" class="text-center py-8" style="color: var(--text-color-secondary)">
+          <i class="pi pi-building text-4xl block mb-2 opacity-30"></i>
+          <span>Sin habitaciones registradas para este hotel</span>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
 
 </div>
+
+<!-- ── Drawer formulario ──────────────────────────────────── -->
+<p-drawer [header]="isEdit() ? 'Editar habitación' : 'Nueva habitación'"
+          [(visible)]="drawerVisible" position="right" [modal]="true"
+          [style]="{ width: '400px' }">
+
+  <div class="flex flex-col gap-4">
+
+    @if (formError()) {
+      <p-message severity="error" [text]="formError()" />
+    }
+
+    <div class="flex gap-3">
+      <div class="flex flex-col gap-1 flex-1">
+        <label class="font-medium text-sm">Número de habitación *</label>
+        <input pInputText [(ngModel)]="form.roomNumber" maxlength="10"
+               class="w-full" placeholder="Ej: 101, 2A" />
+      </div>
+      <div class="flex flex-col gap-1" style="width: 110px">
+        <label class="font-medium text-sm">Piso *</label>
+        <p-inputNumber [(ngModel)]="form.floor" [min]="0" [max]="200"
+                       styleClass="w-full" />
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label class="font-medium text-sm">Tipo de habitación *</label>
+      <p-select [(ngModel)]="form.roomTypeId"
+                [options]="roomTypes()" optionLabel="name" optionValue="id"
+                placeholder="Seleccionar tipo" styleClass="w-full"
+                appendTo="body" [filter]="true" filterBy="name" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label class="font-medium text-sm">Estado</label>
+      <p-select [(ngModel)]="form.status"
+                [options]="statusOptions" optionLabel="label" optionValue="value"
+                styleClass="w-full" appendTo="body" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label class="font-medium text-sm">Notas</label>
+      <textarea pTextarea [(ngModel)]="form.notes" rows="3" class="w-full"
+                placeholder="Observaciones opcionales..."></textarea>
+    </div>
+
+  </div>
+
+  <div class="flex justify-end gap-2 pt-4 mt-4" style="border-top: 1px solid var(--surface-border)">
+    <p-button label="Cancelar" icon="pi pi-times" severity="secondary"
+              (onClick)="drawerVisible.set(false)" />
+    <p-button [label]="isEdit() ? 'Guardar cambios' : 'Crear'"
+              icon="pi pi-check" (onClick)="save()" [loading]="saving()" />
+  </div>
+
+</p-drawer>

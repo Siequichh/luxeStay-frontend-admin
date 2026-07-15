@@ -1,0 +1,98 @@
+<p-toast />
+
+<div class="checkin-page" style="max-width:560px;margin:0 auto;padding:2rem 1rem">
+
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold m-0" style="color:var(--text-color)">Check-in con QR</h1>
+    <p class="mt-1 m-0" style="color:var(--text-color-secondary)">Escanea el QR del huésped o ingresa el token / código de referencia (LXS-XXXXXXXX)</p>
+  </div>
+
+  <!-- Input + escaneo -->
+  <p-card styleClass="mb-4">
+    <div class="flex gap-2 mb-3">
+      <input pInputText [(ngModel)]="token" placeholder="Token QR o referencia (LXS-XXXXXXXX)"
+             class="flex-1" (keydown.enter)="doPreview()" [disabled]="loading() || scanActive()" />
+      <p-button label="Buscar" icon="pi pi-search" (onClick)="doPreview()"
+                [loading]="loading()" [disabled]="!token.trim() || scanActive()" />
+    </div>
+
+    <!-- Cámara -->
+    @if (!scanActive()) {
+      <p-button label="Escanear con cámara" icon="pi pi-camera" severity="secondary"
+                styleClass="w-full" (onClick)="startCamera()" />
+    } @else {
+      <video id="qr-video" playsinline
+             style="width:100%;border-radius:8px;background:#000;display:block;max-height:260px;object-fit:cover">
+      </video>
+      <p-button label="Cancelar escaneo" icon="pi pi-times" severity="secondary"
+                styleClass="w-full mt-2" (onClick)="stopCamera()" />
+      <p class="text-center text-sm mt-2 m-0" style="color:var(--text-color-secondary)">
+        Apunta la cámara al código QR — se detecta automáticamente
+      </p>
+    }
+  </p-card>
+
+  <!-- Error -->
+  @if (error()) {
+    <p-message severity="error" [text]="error()" styleClass="w-full mb-4" />
+  }
+
+  <!-- Preview -->
+  @if (preview()) {
+    <p-card styleClass="mb-4">
+      @if (confirmed()) {
+        <div class="text-center mb-4">
+          <i class="pi pi-check-circle text-green-500" style="font-size:3rem"></i>
+          <p class="font-bold mt-2" style="color:var(--text-color)">Check-in confirmado</p>
+        </div>
+      }
+
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        <span style="color:var(--text-color-secondary)">Código:</span>
+        <strong>{{ preview()!.referenceCode }}</strong>
+
+        <span style="color:var(--text-color-secondary)">Huésped:</span>
+        <span>{{ preview()!.guestName ?? '—' }}</span>
+
+        <span style="color:var(--text-color-secondary)">Email:</span>
+        <span>{{ preview()!.guestEmail }}</span>
+
+        <span style="color:var(--text-color-secondary)">Hotel:</span>
+        <span>{{ preview()!.hotelName }}</span>
+
+        <span style="color:var(--text-color-secondary)">Habitación:</span>
+        <span>{{ preview()!.roomNumber }} · {{ preview()!.roomTypeName }}</span>
+
+        @if (preview()!.bookingType === 'HOURLY') {
+          <span style="color:var(--text-color-secondary)">Fecha:</span>
+          <span>{{ preview()!.checkInDate | date:'dd/MM/yyyy' }}</span>
+
+          <span style="color:var(--text-color-secondary)">Horario:</span>
+          <span>{{ preview()!.checkInTime?.slice(0,5) }} – {{ preview()!.checkOutTime?.slice(0,5) }} <p-tag value="Luxe Velocity" severity="warn" /></span>
+        } @else {
+          <span style="color:var(--text-color-secondary)">Check-in:</span>
+          <span>{{ preview()!.checkInDate | date:'dd/MM/yyyy' }}</span>
+
+          <span style="color:var(--text-color-secondary)">Check-out:</span>
+          <span>{{ preview()!.checkOutDate ? (preview()!.checkOutDate | date:'dd/MM/yyyy') : '—' }}</span>
+        }
+
+        <span style="color:var(--text-color-secondary)">Estado:</span>
+        <p-tag [value]="preview()!.status" />
+      </div>
+
+      @if (!confirmed()) {
+        <div class="flex gap-2 mt-4">
+          <p-button label="Confirmar check-in" icon="pi pi-check" severity="success"
+                    (onClick)="doConfirm()" [loading]="confirming()" class="flex-1" styleClass="w-full" />
+          <p-button label="Cancelar" icon="pi pi-times" severity="secondary"
+                    (onClick)="reset()" [disabled]="confirming()" />
+        </div>
+      } @else {
+        <p-button label="Nuevo check-in" icon="pi pi-refresh" styleClass="w-full mt-4"
+                  (onClick)="reset()" />
+      }
+    </p-card>
+  }
+
+</div>

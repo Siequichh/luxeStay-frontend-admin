@@ -45,6 +45,21 @@ export const routes: Routes = [
         path: 'hotels',
         loadComponent: () =>
           import('./features/hotels/hotels.component').then(m => m.HotelsComponent)
+      },
+      {
+        path: 'room-types',
+        loadComponent: () =>
+          import('./features/room-types/room-types.component').then(m => m.RoomTypesComponent)
+      },
+      {
+        path: 'checkin',
+        loadComponent: () =>
+          import('./features/checkin/checkin.component').then(m => m.CheckinComponent)
+      },
+      {
+        path: 'pricing',
+        loadComponent: () =>
+          import('./features/pricing/pricing.component').then(m => m.PricingComponent)
       }
     ]
   },

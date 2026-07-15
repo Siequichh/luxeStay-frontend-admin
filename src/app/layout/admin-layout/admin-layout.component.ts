@@ -1,4 +1,4 @@
-import { Component, OnInit, HostListener, computed, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -8,6 +8,7 @@ import { RippleModule } from 'primeng/ripple';
 import { TooltipModule } from 'primeng/tooltip';
 import { AuthService } from '../../core/services/auth.service';
 import { LayoutService } from '../../core/services/layout.service';
+import { NotificationService } from '../../core/services/notification.service';
 
 export interface MenuItem {
   label: string;
@@ -23,22 +24,28 @@ export interface MenuItem {
   templateUrl: './admin-layout.component.html',
   styleUrl: './admin-layout.component.scss',
 })
-export class AdminLayoutComponent implements OnInit {
+export class AdminLayoutComponent implements OnInit, OnDestroy {
 
   private readonly allMenuItems: MenuItem[] = [
-    { label: 'Dashboard',    icon: 'pi pi-home',        routerLink: ['/dashboard'], adminOnly: false },
-    { label: 'Reservas',     icon: 'pi pi-calendar',    routerLink: ['/bookings'],  adminOnly: false },
-    { label: 'Habitaciones', icon: 'pi pi-building',    routerLink: ['/rooms'],     adminOnly: false },
-    { label: 'Usuarios',     icon: 'pi pi-users',       routerLink: ['/users'],     adminOnly: true  },
-    { label: 'Hoteles',      icon: 'pi pi-map-marker',  routerLink: ['/hotels'],    adminOnly: false },
+    { label: 'Dashboard',    icon: 'pi pi-home',        routerLink: ['/dashboard'],   adminOnly: false },
+    { label: 'Reservas',     icon: 'pi pi-calendar',    routerLink: ['/bookings'],    adminOnly: false },
+    { label: 'Habitaciones', icon: 'pi pi-building',    routerLink: ['/rooms'],       adminOnly: false },
+    { label: 'Tipos de Hab.', icon: 'pi pi-th-large',  routerLink: ['/room-types'],  adminOnly: false },
+    { label: 'Disp. y Precios', icon: 'pi pi-sliders-h', routerLink: ['/pricing'],   adminOnly: false },
+    { label: 'Usuarios',     icon: 'pi pi-users',       routerLink: ['/users'],       adminOnly: true  },
+    { label: 'Hoteles',      icon: 'pi pi-map-marker',  routerLink: ['/hotels'],      adminOnly: false },
+    { label: 'Check-in QR',  icon: 'pi pi-qrcode',      routerLink: ['/checkin'],     adminOnly: false },
   ];
 
   private readonly titleMap: Record<string, string> = {
-    '/dashboard': 'Dashboard',
-    '/bookings':  'Gestión de Reservas',
-    '/rooms':     'Habitaciones',
-    '/users':     'Gestión de Usuarios',
-    '/hotels':    'Hoteles',
+    '/dashboard':  'Dashboard',
+    '/bookings':   'Gestión de Reservas',
+    '/rooms':      'Habitaciones',
+    '/room-types': 'Tipos de Habitación',
+    '/pricing':    'Disponibilidad y Precios',
+    '/users':      'Gestión de Usuarios',
+    '/hotels':     'Hoteles',
+    '/checkin':    'Check-in QR',
   };
 
   menuItems = computed<MenuItem[]>(() => {
@@ -51,11 +58,16 @@ export class AdminLayoutComponent implements OnInit {
   isDark       = computed(() => this.layout.isDarkTheme());
   pageTitle    = signal<string>('Dashboard');
   sidebarOpen  = signal<boolean>(false);
+  notifOpen    = signal<boolean>(false);
+
+  notifUnread  = computed(() => this.notifService.unread());
+  notifItems   = computed(() => this.notifService.items());
 
   constructor(
     private auth: AuthService,
     private layout: LayoutService,
     private router: Router,
+    readonly notifService: NotificationService,
   ) {
     this.router.events.pipe(
       filter(e => e instanceof NavigationEnd),
@@ -73,6 +85,27 @@ export class AdminLayoutComponent implements OnInit {
     this.layout.applyTheme();
     const url = this.router.url.split('?')[0];
     this.pageTitle.set(this.titleMap[url] ?? 'Dashboard');
+    this.notifService.start();
+  }
+
+  ngOnDestroy(): void {
+    this.notifService.stop();
+  }
+
+  timeAgo(iso: string): string {
+    if (!iso) return '';
+    const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    if (mins < 1)  return 'ahora';
+    if (mins < 60) return `hace ${mins} min`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24)  return `hace ${hrs} h`;
+    return `hace ${Math.floor(hrs / 24)} d`;
+  }
+
+  onNotifClick(n: any): void {
+    if (!n.read) this.notifService.markRead(n.id);
+    this.notifOpen.set(false);
+    this.router.navigate(['/bookings']);
   }
 
   @HostListener('window:resize')

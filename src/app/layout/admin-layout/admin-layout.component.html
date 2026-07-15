@@ -69,6 +69,47 @@
 
       <div class="topbar-actions">
 
+        <!-- Notificaciones -->
+        <div class="notif-wrapper">
+          <button class="topbar-icon-btn notif-bell-btn" (click)="notifOpen.set(!notifOpen())"
+                  type="button" title="Notificaciones" aria-label="Notificaciones">
+            <i class="pi pi-bell"></i>
+            @if (notifUnread() > 0) {
+              <span class="notif-badge">{{ notifUnread() > 9 ? '9+' : notifUnread() }}</span>
+            }
+          </button>
+
+          @if (notifOpen()) {
+            <div class="notif-backdrop" (click)="notifOpen.set(false)"></div>
+            <div class="notif-dropdown">
+              <div class="notif-header">
+                <span class="notif-title">Notificaciones</span>
+                @if (notifUnread() > 0) {
+                  <button class="notif-mark-all" (click)="notifService.markAllRead()" type="button">
+                    Marcar todas leídas
+                  </button>
+                }
+              </div>
+              <div class="notif-list">
+                @if (notifItems().length === 0) {
+                  <p class="notif-empty">Sin notificaciones</p>
+                }
+                @for (n of notifItems(); track n.id) {
+                  <button class="notif-item" [class.notif-item--unread]="!n.read"
+                          (click)="onNotifClick(n)" type="button">
+                    <span class="notif-icon">{{ n.type === 'NEW_BOOKING' ? '🔔' : n.type === 'BOOKING_CONFIRMED' ? '✅' : n.type === 'BOOKING_CANCELLED' ? '❌' : n.type === 'PAYMENT_COMPLETED' ? '💳' : '⭐' }}</span>
+                    <div class="notif-body">
+                      <p class="notif-item-title">{{ n.title }}</p>
+                      <p class="notif-item-msg">{{ n.message }}</p>
+                      <p class="notif-item-time">{{ timeAgo(n.createdAt) }}</p>
+                    </div>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
         <!-- Theme toggle -->
         <button
           class="topbar-icon-btn"

@@ -217,3 +217,9 @@ textarea {
     background: var(--p-surface-overlay);
   }
 }
+
+/* ── Identidad LuxeStay: títulos de página en serif ─────────── */
+.card > .flex h2 {
+  font-family: 'Playfair Display', Georgia, serif;
+  letter-spacing: 0.01em;
+}

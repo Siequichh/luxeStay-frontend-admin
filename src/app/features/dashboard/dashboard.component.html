@@ -107,7 +107,7 @@
             <td>{{ b.checkInDate | date:'dd/MM/yyyy' }}</td>
             <td class="text-right"><strong>S/ {{ b.totalAmount | number:'1.2-2' }}</strong></td>
             <td>
-              <p-tag [value]="b.status" [severity]="getStatusSeverity(b.status)" />
+              <p-tag [value]="statusLabel(b.status)" [severity]="getStatusSeverity(b.status)" />
             </td>
           </tr>
         </ng-template>

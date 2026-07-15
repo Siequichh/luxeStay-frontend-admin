@@ -17,7 +17,8 @@ import { BookingService, BookingResponse } from '../../core/services/booking.ser
 export class DashboardComponent implements OnInit {
 
   recentBookings: BookingResponse[] = [];
-  loading = true;
+  loading  = true;
+  loadError = false;
 
   totalBookings     = 0;
   confirmedBookings = 0;
@@ -43,7 +44,12 @@ export class DashboardComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.bookingService.getAllBookings(0, 50).subscribe({
+    // El gestor no tiene acceso a /admin/bookings — usa su endpoint de manager
+    const bookings$ = this.isAdmin()
+      ? this.bookingService.getAllBookings(0, 50)
+      : this.bookingService.getManagerBookings(0, 50);
+
+    bookings$.subscribe({
       next: page => {
         this.recentBookings    = page.content.slice(0, 5);
         this.totalBookings     = page.totalElements;
@@ -54,7 +60,7 @@ export class DashboardComponent implements OnInit {
           .reduce((sum, b) => sum + b.totalAmount, 0);
         this.loading = false;
       },
-      error: () => { this.loading = false; },
+      error: () => { this.loading = false; this.loadError = true; },
     });
   }
 
@@ -67,5 +73,13 @@ export class DashboardComponent implements OnInit {
       NO_SHOW:   'secondary',
     };
     return map[status] ?? 'secondary';
+  }
+
+  statusLabel(status: string): string {
+    const labels: Record<string, string> = {
+      CONFIRMED: 'Confirmada', PENDING: 'Pendiente', CANCELLED: 'Cancelada',
+      COMPLETED: 'Completada', NO_SHOW: 'No presentó',
+    };
+    return labels[status] ?? status;
   }
 }

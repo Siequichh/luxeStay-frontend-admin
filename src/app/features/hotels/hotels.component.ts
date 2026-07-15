@@ -13,9 +13,10 @@ import { TooltipModule } from 'primeng/tooltip';
 import { MessageModule } from 'primeng/message';
 import { ToastModule } from 'primeng/toast';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { MessageService } from 'primeng/api';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { MessageService, ConfirmationService } from 'primeng/api';
 import { AuthService } from '../../core/services/auth.service';
-import { HotelService, HotelResponse, UpdateHotelRequest } from '../../core/services/hotel.service';
+import { HotelService, HotelResponse, UpdateHotelRequest, CreateHotelRequest } from '../../core/services/hotel.service';
 import { UbigeoService, DepartmentOption, ProvinceOption, UbigeoItem } from '../../core/services/ubigeo.service';
 
 @Component({
@@ -26,21 +27,23 @@ import { UbigeoService, DepartmentOption, ProvinceOption, UbigeoItem } from '../
     TableModule, TagModule, ButtonModule,
     DialogModule, InputTextModule, TextareaModule, InputNumberModule,
     SelectModule, TooltipModule, MessageModule, ToastModule, ProgressSpinnerModule,
+    ConfirmDialogModule,
   ],
-  providers: [MessageService],
+  providers: [MessageService, ConfirmationService],
   templateUrl: './hotels.component.html',
   styleUrl: './hotels.component.scss',
 })
 export class HotelsComponent implements OnInit {
 
-  private auth          = inject(AuthService);
-  private hotelService  = inject(HotelService);
-  private ubigeoService = inject(UbigeoService);
-  private msgService    = inject(MessageService);
+  private auth             = inject(AuthService);
+  private hotelService     = inject(HotelService);
+  private ubigeoService    = inject(UbigeoService);
+  private msgService       = inject(MessageService);
+  private confirmService   = inject(ConfirmationService);
 
-  hotels: HotelResponse[] = [];
-  loading  = true;
-  apiError = false;
+  hotels:   HotelResponse[] = [];
+  loading   = true;
+  apiError  = false;
 
   // ── Edit dialog ────────────────────────────────────────────
   editDialogVisible = false;
@@ -48,14 +51,18 @@ export class HotelsComponent implements OnInit {
   saving    = false;
   editError = '';
 
-  editForm = {
-    name:        '',
-    description: '',
-    address:     '',
-    starRating:  null as number | null,
-  };
+  editForm = { name: '', description: '', address: '', starRating: null as number | null,
+               latitude: null as number | null, longitude: null as number | null };
 
-  // ── Ubigeo cascading state ─────────────────────────────────
+  // ── Create dialog ──────────────────────────────────────────
+  createDialogVisible = false;
+  creating  = false;
+  createError = '';
+
+  createForm = { name: '', description: '', address: '', starRating: null as number | null,
+                 latitude: null as number | null, longitude: null as number | null };
+
+  // ── Shared ubigeo state (reused by edit + create) ──────────
   departments:  DepartmentOption[] = [];
   provinces:    ProvinceOption[]   = [];
   districts:    UbigeoItem[]       = [];
@@ -68,116 +75,97 @@ export class HotelsComponent implements OnInit {
 
   isAdmin = computed(() => this.auth.currentUser()?.role === 'ADMIN');
 
-  ngOnInit(): void {
-    this.loadHotels();
-  }
+  ngOnInit(): void { this.loadHotels(); }
 
   loadHotels(): void {
     this.loading  = true;
     this.apiError = false;
-    const request$ = this.isAdmin()
-      ? this.hotelService.getAll()
-      : this.hotelService.getMyHotels();
-
-    request$.subscribe({
+    const req$ = this.isAdmin() ? this.hotelService.getAll() : this.hotelService.getMyHotels();
+    req$.subscribe({
       next:  data => { this.hotels = data; this.loading = false; },
       error: ()   => { this.apiError = true; this.loading = false; },
     });
   }
 
-  // ── Edit ──────────────────────────────────────────────────
+  // ── Create ─────────────────────────────────────────────────
+
+  openCreate(): void {
+    this.createForm  = { name: '', description: '', address: '', starRating: null,
+                         latitude: null, longitude: null };
+    this.createError = '';
+    this._resetUbigeo();
+    this._loadDepartments();
+    this.createDialogVisible = true;
+  }
+
+  saveCreate(): void {
+    if (!this.createForm.name || !this.createForm.description ||
+        !this.createForm.address || !this.selectedDist) {
+      this.createError = 'Completa todos los campos requeridos, incluyendo la ubicación.';
+      return;
+    }
+    this.creating    = true;
+    this.createError = '';
+
+    const req: CreateHotelRequest = {
+      name:        this.createForm.name,
+      description: this.createForm.description,
+      address:     this.createForm.address,
+      reniecCode:  this.selectedDist.reniecCode,
+      starRating:  this.createForm.starRating ?? undefined,
+      latitude:    this.createForm.latitude   ?? undefined,
+      longitude:   this.createForm.longitude  ?? undefined,
+    };
+
+    this.hotelService.create(req).subscribe({
+      next: created => {
+        this.hotels = [created, ...this.hotels];
+        this.creating            = false;
+        this.createDialogVisible = false;
+        this.msgService.add({ severity: 'success', summary: 'Creado', detail: `Hotel "${created.name}" creado.` });
+      },
+      error: err => {
+        this.createError = err.error?.message ?? 'Error al crear el hotel';
+        this.creating    = false;
+      },
+    });
+  }
+
+  // ── Edit ───────────────────────────────────────────────────
 
   openEdit(hotel: HotelResponse): void {
     this.editingHotel = hotel;
-    this.editForm = {
-      name:        hotel.name,
-      description: hotel.description,
-      address:     hotel.address,
-      starRating:  hotel.starRating,
-    };
-    this.editError = '';
-
-    // Reset ubigeo state
-    this.provinces   = [];
-    this.districts   = [];
-    this.selectedDep = null;
-    this.selectedProv = null;
-    this.selectedDist = null;
-
-    // Load departments then pre-populate
-    this.loadingDeps = true;
-    this.ubigeoService.getDepartments().subscribe({
-      next: (deps) => {
-        this.departments = deps;
-        this.loadingDeps = false;
-
-        // Pre-select current department
-        const dep = deps.find(d => d.code === hotel.departmentCode);
-        if (dep) {
-          this.selectedDep = dep;
-          this.loadingProvs = true;
-          this.ubigeoService.getProvinces(dep.code).subscribe({
-            next: (provs) => {
-              this.provinces    = provs;
-              this.loadingProvs = false;
-
-              // Pre-select current province
-              const prov = provs.find(p => p.code === hotel.provinceCode);
-              if (prov) {
-                this.selectedProv = prov;
-                this.loadingDists = true;
-                this.ubigeoService.getDistricts(dep.code, prov.code).subscribe({
-                  next: (dists) => {
-                    this.districts    = dists;
-                    this.loadingDists = false;
-
-                    // Pre-select current district
-                    const dist = dists.find(d => d.reniecCode === hotel.reniecCode);
-                    if (dist) this.selectedDist = dist;
-                  },
-                  error: () => { this.loadingDists = false; },
-                });
-              }
+    this.editForm     = { name: hotel.name, description: hotel.description,
+                          address: hotel.address, starRating: hotel.starRating,
+                          latitude: hotel.latitude, longitude: hotel.longitude };
+    this.editError    = '';
+    this._resetUbigeo();
+    this._loadDepartments(() => {
+      const dep = this.departments.find(d => d.code === hotel.departmentCode);
+      if (!dep) return;
+      this.selectedDep = dep;
+      this.loadingProvs = true;
+      this.ubigeoService.getProvinces(dep.code).subscribe({
+        next: provs => {
+          this.provinces    = provs;
+          this.loadingProvs = false;
+          const prov = provs.find(p => p.code === hotel.provinceCode);
+          if (!prov) return;
+          this.selectedProv = prov;
+          this.loadingDists = true;
+          this.ubigeoService.getDistricts(dep.code, prov.code).subscribe({
+            next: dists => {
+              this.districts    = dists;
+              this.loadingDists = false;
+              this.selectedDist = dists.find(d => d.reniecCode === hotel.reniecCode) ?? null;
             },
-            error: () => { this.loadingProvs = false; },
+            error: () => { this.loadingDists = false; },
           });
-        }
-      },
-      error: () => { this.loadingDeps = false; },
+        },
+        error: () => { this.loadingProvs = false; },
+      });
     });
-
     this.editDialogVisible = true;
-  }
-
-  onDepChange(): void {
-    this.selectedProv = null;
-    this.selectedDist = null;
-    this.provinces    = [];
-    this.districts    = [];
-    if (!this.selectedDep) return;
-
-    this.loadingProvs = true;
-    this.ubigeoService.getProvinces(this.selectedDep.code).subscribe({
-      next: (data) => { this.provinces = data; this.loadingProvs = false; },
-      error: ()    => { this.loadingProvs = false; },
-    });
-  }
-
-  onProvChange(): void {
-    this.selectedDist = null;
-    this.districts    = [];
-    if (!this.selectedDep || !this.selectedProv) return;
-
-    this.loadingDists = true;
-    this.ubigeoService.getDistricts(this.selectedDep.code, this.selectedProv.code).subscribe({
-      next: (data) => { this.districts = data; this.loadingDists = false; },
-      error: ()    => { this.loadingDists = false; },
-    });
-  }
-
-  closeEdit(): void {
-    this.editDialogVisible = false;
-    this.editingHotel = null;
   }
 
   saveEdit(): void {
@@ -191,6 +179,8 @@ export class HotelsComponent implements OnInit {
       address:     this.editForm.address     || undefined,
       starRating:  this.editForm.starRating  ?? undefined,
       reniecCode:  this.selectedDist?.reniecCode ?? undefined,
+      latitude:    this.editForm.latitude    ?? undefined,
+      longitude:   this.editForm.longitude   ?? undefined,
     };
 
     const save$ = this.isAdmin()
@@ -198,33 +188,81 @@ export class HotelsComponent implements OnInit {
       : this.hotelService.updateMyHotel(this.editingHotel.id, req);
 
     save$.subscribe({
-      next: (updated) => {
-        const idx = this.hotels.findIndex(h => h.id === updated.id);
-        if (idx >= 0) this.hotels = [
-          ...this.hotels.slice(0, idx),
-          updated,
-          ...this.hotels.slice(idx + 1),
-        ];
-        this.saving = false;
-        this.editDialogVisible = false;
-        this.editingHotel = null;
-        this.msgService.add({ severity: 'success', summary: 'Guardado', detail: 'Hotel actualizado correctamente' });
+      next: updated => {
+        this.hotels = this.hotels.map(h => h.id === updated.id ? updated : h);
+        this.saving = false; this.editDialogVisible = false; this.editingHotel = null;
+        this.msgService.add({ severity: 'success', summary: 'Guardado', detail: 'Hotel actualizado.' });
       },
-      error: (err) => {
-        this.editError = err.error?.message ?? 'Error al guardar los cambios';
-        this.saving = false;
-      },
+      error: err => { this.editError = err.error?.message ?? 'Error al guardar'; this.saving = false; },
     });
   }
 
-  // ── Helpers ───────────────────────────────────────────────
+  closeEdit(): void { this.editDialogVisible = false; this.editingHotel = null; }
+
+  // ── Deactivate ─────────────────────────────────────────────
+
+  confirmDeactivate(hotel: HotelResponse): void {
+    this.confirmService.confirm({
+      message:     `¿Desactivar el hotel "${hotel.name}"? Las habitaciones y reservas existentes no se borrarán.`,
+      header:      'Confirmar desactivación',
+      icon:        'pi pi-exclamation-triangle',
+      acceptLabel: 'Sí, desactivar',
+      rejectLabel: 'Cancelar',
+      accept:      () => this._doDeactivate(hotel),
+    });
+  }
+
+  private _doDeactivate(hotel: HotelResponse): void {
+    this.hotelService.deactivate(hotel.id).subscribe({
+      next: () => {
+        this.hotels = this.hotels.map(h => h.id === hotel.id ? { ...h, active: false } : h);
+        this.msgService.add({ severity: 'warn', summary: 'Desactivado', detail: `"${hotel.name}" desactivado.` });
+      },
+      error: err => this.msgService.add({ severity: 'error', summary: 'Error',
+                                          detail: err.error?.message ?? 'No se pudo desactivar' }),
+    });
+  }
+
+  // ── Ubigeo helpers ─────────────────────────────────────────
+
+  private _resetUbigeo(): void {
+    this.provinces = []; this.districts = [];
+    this.selectedDep = null; this.selectedProv = null; this.selectedDist = null;
+  }
+
+  private _loadDepartments(cb?: () => void): void {
+    this.loadingDeps = true;
+    this.ubigeoService.getDepartments().subscribe({
+      next: deps => { this.departments = deps; this.loadingDeps = false; cb?.(); },
+      error: ()  => { this.loadingDeps = false; },
+    });
+  }
+
+  onDepChange(): void {
+    this.selectedProv = null; this.selectedDist = null;
+    this.provinces = []; this.districts = [];
+    if (!this.selectedDep) return;
+    this.loadingProvs = true;
+    this.ubigeoService.getProvinces(this.selectedDep.code).subscribe({
+      next: data => { this.provinces = data; this.loadingProvs = false; },
+      error: ()  => { this.loadingProvs = false; },
+    });
+  }
+
+  onProvChange(): void {
+    this.selectedDist = null; this.districts = [];
+    if (!this.selectedDep || !this.selectedProv) return;
+    this.loadingDists = true;
+    this.ubigeoService.getDistricts(this.selectedDep.code, this.selectedProv.code).subscribe({
+      next: data => { this.districts = data; this.loadingDists = false; },
+      error: ()  => { this.loadingDists = false; },
+    });
+  }
 
   starLabel(rating: number | null): string {
     if (!rating) return '—';
     return '★'.repeat(rating) + '☆'.repeat(5 - rating);
   }
 
-  reload(): void {
-    this.loadHotels();
-  }
+  reload(): void { this.loadHotels(); }
 }

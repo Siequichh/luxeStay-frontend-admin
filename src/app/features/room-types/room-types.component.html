@@ -1,0 +1,194 @@
+<p-toast />
+<p-confirmDialog [draggable]="false" />
+
+<div class="card px-4">
+
+  <div class="flex items-center justify-between mb-3">
+    <div>
+      <h2 class="text-2xl font-bold m-0" style="color: var(--text-color)">Tipos de Habitación</h2>
+      <p class="m-0 mt-1" style="color: var(--text-color-secondary)">
+        Gestiona los tipos de habitación y sus precios
+      </p>
+    </div>
+    <p-button label="Nuevo Tipo" icon="pi pi-plus" (onClick)="openCreate()" />
+  </div>
+
+  <!-- Hotel selector -->
+  @if (isAdmin() || hotels().length > 1) {
+    <div class="mb-3" style="max-width: 300px">
+      <p-select
+        [ngModel]="selectedHotelId()"
+        (ngModelChange)="selectedHotelId.set($event); onHotelChange()"
+        [options]="hotels()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Seleccionar hotel"
+        styleClass="w-full" appendTo="body" />
+    </div>
+  }
+
+  <p-table [value]="roomTypes()" [loading]="loading()" styleClass="p-datatable-sm mt-2"
+           [tableStyle]="{ 'min-width': '50rem' }">
+
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Nombre</th>
+        <th>Categoría</th>
+        <th class="text-center">Huéspedes</th>
+        <th class="text-right">Precio/noche</th>
+        <th class="text-right">Precio/hora</th>
+        <th class="text-center">Velocity</th>
+        <th class="text-center">Rooms</th>
+        <th>Estado</th>
+        <th style="width: 8rem">Acciones</th>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="body" let-rt>
+      <tr>
+        <td>
+          <div class="flex items-center gap-2">
+            @if (rt.thumbnailUrl) {
+              <img [src]="rt.thumbnailUrl" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:6px" />
+            }
+            <span class="font-semibold">{{ rt.name }}</span>
+          </div>
+        </td>
+        <td>{{ rt.categoryDisplay }}</td>
+        <td class="text-center">{{ rt.maxGuests }}</td>
+        <td class="text-right">S/ {{ rt.basePriceNight | number:'1.2-2' }}</td>
+        <td class="text-right">
+          @if (rt.basePriceHour) { S/ {{ rt.basePriceHour | number:'1.2-2' }} }
+          @else { <span style="color:var(--text-color-secondary)">—</span> }
+        </td>
+        <td class="text-center">
+          <p-tag [value]="rt.allowsVelocity ? 'Sí' : 'No'"
+                 [severity]="rt.allowsVelocity ? 'success' : 'secondary'" />
+        </td>
+        <td class="text-center">{{ rt.roomCount }}</td>
+        <td>
+          <p-tag [value]="rt.active ? 'Activo' : 'Inactivo'"
+                 [severity]="rt.active ? 'success' : 'danger'" />
+        </td>
+        <td>
+          <div class="flex gap-2">
+            <p-button icon="pi pi-pencil" severity="info" [text]="true" [rounded]="true"
+                      pTooltip="Editar" (onClick)="openEdit(rt)" />
+            @if (rt.active) {
+              <p-button icon="pi pi-trash" severity="danger" [text]="true" [rounded]="true"
+                        pTooltip="Desactivar" (onClick)="confirmDeactivate(rt)" />
+            }
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="empty">
+      <tr>
+        <td colspan="9" class="text-center py-4" style="color:var(--text-color-secondary)">
+          @if (selectedHotelId()) { No hay tipos de habitación para este hotel }
+          @else { Selecciona un hotel para ver sus tipos de habitación }
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
+
+<!-- ── Drawer crear/editar ──────────────────────────────────── -->
+<p-drawer [header]="isEdit() ? 'Editar Tipo de Habitación' : 'Nuevo Tipo de Habitación'"
+          [(visible)]="drawerVisible" position="right" [modal]="true"
+          [style]="{ width: '480px' }">
+
+  <form class="flex flex-col gap-4" (ngSubmit)="save()">
+
+    @if (formError()) {
+      <p-message severity="error" [text]="formError()" />
+    }
+
+    <div class="flex flex-col gap-1">
+      <label class="font-medium text-sm">Nombre *</label>
+      <input pInputText [(ngModel)]="form.name" name="name" class="w-full" placeholder="Ej: Habitación Matrimonial" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label class="font-medium text-sm">Categoría *</label>
+      <p-select [(ngModel)]="form.category" name="category" [options]="categoryOptions"
+                optionLabel="label" optionValue="value" styleClass="w-full" appendTo="body" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label class="font-medium text-sm">Descripción *</label>
+      <textarea pTextarea [(ngModel)]="form.description" name="description" rows="3"
+                class="w-full" autoResize="true" placeholder="Describe las características"></textarea>
+    </div>
+
+    <div class="flex gap-3">
+      <div class="flex flex-col gap-1 flex-1">
+        <label class="font-medium text-sm">Huéspedes máx.</label>
+        <p-inputNumber [(ngModel)]="form.maxGuests" name="maxGuests" [min]="1" [max]="10"
+                       [showButtons]="true" styleClass="w-full" />
+      </div>
+      <div class="flex flex-col gap-1 flex-1">
+        <label class="font-medium text-sm">Área (m²)</label>
+        <p-inputNumber [(ngModel)]="form.areaSqm" name="areaSqm" [min]="1" [maxFractionDigits]="2"
+                       [showButtons]="true" styleClass="w-full" />
+      </div>
+    </div>
+
+    <div class="flex gap-3">
+      <div class="flex flex-col gap-1 flex-1">
+        <label class="font-medium text-sm">Precio/noche (S/)</label>
+        <p-inputNumber [(ngModel)]="form.basePriceNight" name="basePriceNight" [min]="0.01"
+                       [maxFractionDigits]="2" mode="currency" currency="PEN" locale="es-PE"
+                       styleClass="w-full" />
+      </div>
+      <div class="flex flex-col gap-1 flex-1">
+        <label class="font-medium text-sm">Precio/hora (S/)</label>
+        <p-inputNumber [(ngModel)]="form.basePriceHour" name="basePriceHour" [min]="0.01"
+                       [maxFractionDigits]="2" mode="currency" currency="PEN" locale="es-PE"
+                       styleClass="w-full" [disabled]="!form.allowsVelocity" />
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <p-checkbox [(ngModel)]="form.allowsVelocity" name="allowsVelocity" [binary]="true"
+                  inputId="velocity" />
+      <label for="velocity" class="cursor-pointer font-medium text-sm">
+        Habilitar Luxe Velocity (reservas por hora)
+      </label>
+    </div>
+
+    <!-- Imágenes -->
+    <div class="flex flex-col gap-2">
+      <label class="font-medium text-sm">Imágenes</label>
+      <p-fileupload mode="basic" name="file" accept="image/*" [auto]="true"
+                    chooseLabel="Subir imagen" (onSelect)="onFileSelect($event)"
+                    [disabled]="uploadingImage()" styleClass="w-full" />
+      @if (uploadingImage()) {
+        <small style="color:var(--text-color-secondary)">Subiendo imagen...</small>
+      }
+      <div class="flex flex-wrap gap-2 mt-1">
+        @for (url of form.imageUrls; track url; let i = $index) {
+          <div class="relative" style="width:80px;height:80px">
+            <img [src]="url" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px" />
+            <button type="button" class="absolute top-0 right-0 bg-red-500 text-white"
+                    style="border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:10px;line-height:1"
+                    (click)="removeImage(i)">✕</button>
+            @if (i === 0) {
+              <span class="absolute bottom-0 left-0 bg-primary text-white"
+                    style="font-size:9px;padding:1px 4px;border-radius:0 6px 0 6px">Principal</span>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+  </form>
+
+  <div class="flex justify-end gap-2 pt-4 mt-4" style="border-top:1px solid var(--surface-border)">
+    <p-button label="Cancelar" icon="pi pi-times" severity="secondary"
+              (onClick)="drawerVisible.set(false)" />
+    <p-button [label]="isEdit() ? 'Guardar cambios' : 'Crear'" icon="pi pi-check"
+              (onClick)="save()" [loading]="saving()" />
+  </div>
+</p-drawer>

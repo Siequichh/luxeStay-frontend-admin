@@ -1,0 +1,247 @@
+<p-toast />
+<p-confirmDialog [draggable]="false" />
+
+<div class="card px-4">
+
+  <div class="flex items-center justify-between mb-3 flex-wrap gap-3">
+    <div>
+      <h2 class="text-2xl font-bold m-0" style="color: var(--text-color)">Disponibilidad y Precios</h2>
+      <p class="m-0 mt-1" style="color: var(--text-color-secondary)">
+        Calendario de disponibilidad, bloques Luxe Velocity y temporadas
+      </p>
+    </div>
+
+    <!-- Segmented control -->
+    <div class="seg-control">
+      <button [class.active]="tab() === 'availability'" (click)="setTab('availability')">
+        <i class="pi pi-calendar"></i> Disponibilidad
+      </button>
+      <button [class.active]="tab() === 'velocity'" (click)="setTab('velocity')">
+        <i class="pi pi-bolt"></i> Velocity
+      </button>
+      <button [class.active]="tab() === 'seasonal'" (click)="setTab('seasonal')">
+        <i class="pi pi-chart-line"></i> Temporadas
+      </button>
+    </div>
+  </div>
+
+  <!-- Selectores de contexto -->
+  <div class="flex flex-wrap gap-3 mb-4">
+    @if (isAdmin() || hotels().length > 1) {
+      <p-select [ngModel]="selectedHotelId()"
+                (ngModelChange)="selectedHotelId.set($event); onHotelChange()"
+                [options]="hotels()" optionLabel="name" optionValue="id"
+                placeholder="Hotel" styleClass="w-56" appendTo="body" />
+    }
+    @if (tab() !== 'seasonal') {
+      <p-select [ngModel]="selectedRoomId()"
+                (ngModelChange)="selectedRoomId.set($event); tab() === 'availability' ? loadAvailability() : loadBlocks()"
+                [options]="rooms()" optionValue="id"
+                placeholder="Habitación" styleClass="w-56"
+                appendTo="body" [filter]="true" filterBy="roomNumber,roomTypeName">
+        <ng-template let-r pTemplate="item">Hab. {{ r.roomNumber }} · {{ r.roomTypeName }}</ng-template>
+        <ng-template let-r pTemplate="selectedItem">Hab. {{ r.roomNumber }} · {{ r.roomTypeName }}</ng-template>
+      </p-select>
+    } @else {
+      <p-select [ngModel]="selectedRtId()"
+                (ngModelChange)="selectedRtId.set($event); loadSeasons()"
+                [options]="roomTypes()" optionLabel="name" optionValue="id"
+                placeholder="Tipo de habitación" styleClass="w-56" appendTo="body" />
+    }
+  </div>
+
+  <!-- ═══════════ TAB: Disponibilidad ═══════════ -->
+  @if (tab() === 'availability') {
+    <div class="flex flex-wrap items-end gap-3 mb-4">
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium">Desde</label>
+        <input type="date" class="native-date" [(ngModel)]="availFrom" (change)="loadAvailability()" />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium">Hasta</label>
+        <input type="date" class="native-date" [(ngModel)]="availTo" (change)="loadAvailability()" />
+      </div>
+      <p-button label="Guardar cambios" icon="pi pi-check" [loading]="savingAvail()"
+                [disabled]="!daysDirty()" (onClick)="saveAvailability()" />
+    </div>
+
+    @if (loadingAvail()) {
+      <p style="color: var(--text-color-secondary)"><i class="pi pi-spinner pi-spin"></i> Cargando…</p>
+    } @else if (!selectedRoomId()) {
+      <p style="color: var(--text-color-secondary)">Selecciona una habitación.</p>
+    } @else {
+      <p class="text-sm mb-2" style="color: var(--text-color-secondary)">
+        Clic en un día para bloquear/desbloquear. Los días bloqueados admiten un motivo.
+      </p>
+      <div class="day-grid">
+        @for (d of days(); track d.date) {
+          <div class="day-chip" [class.blocked]="!d.available" (click)="toggleDay(d)"
+               [pTooltip]="d.available ? 'Disponible — clic para bloquear' : 'Bloqueado — clic para liberar'">
+            <span class="day-week">{{ dayLabel(d.date) }}</span>
+            <span class="day-num">{{ dayNum(d.date) }}</span>
+            <i class="pi" [class.pi-check-circle]="d.available" [class.pi-ban]="!d.available"></i>
+          </div>
+        }
+      </div>
+
+      @if (daysDirty()) {
+        <div class="mt-4">
+          @for (d of days(); track d.date) {
+            @if (!d.available) {
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-sm font-mono" style="min-width: 90px">{{ d.date }}</span>
+                <input pInputText class="flex-1" placeholder="Motivo del bloqueo (opcional)"
+                       [ngModel]="d.blockedReason" (ngModelChange)="setReason(d, $event)" />
+              </div>
+            }
+          }
+        </div>
+      }
+    }
+  }
+
+  <!-- ═══════════ TAB: Velocity ═══════════ -->
+  @if (tab() === 'velocity') {
+    <div class="flex flex-wrap items-end gap-3 mb-4">
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium">Fecha</label>
+        <input type="date" class="native-date" [(ngModel)]="velocityDate" (change)="loadBlocks()" />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium">Precio por bloque (S/)</label>
+        <p-inputNumber [(ngModel)]="newBlockPrice" [min]="0.01" [maxFractionDigits]="2"
+                       mode="currency" currency="PEN" locale="es-PE" styleClass="w-44" />
+      </div>
+    </div>
+
+    <p class="text-sm mb-2" style="color: var(--text-color-secondary)">
+      Bloques de 4 horas del día seleccionado — crea los que estarán a la venta:
+    </p>
+    <div class="flex flex-wrap gap-3 mb-5">
+      @for (preset of velocityPresets; track preset.startTime) {
+        <button class="velocity-slot" [class.created]="blockExists(preset)"
+                [disabled]="blockExists(preset)" (click)="addBlock(preset)">
+          <i class="pi pi-bolt"></i>
+          <span>{{ preset.label }}</span>
+          <small>{{ blockExists(preset) ? 'Creado' : 'Crear bloque' }}</small>
+        </button>
+      }
+    </div>
+
+    <p-table [value]="blocks()" [loading]="loadingBlocks()" styleClass="p-datatable-sm">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Horario</th>
+          <th class="text-right">Precio</th>
+          <th>Estado</th>
+          <th style="width: 5rem"></th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-b>
+        <tr>
+          <td class="font-mono">{{ b.startTime.slice(0,5) }} – {{ b.endTime.slice(0,5) }}</td>
+          <td class="text-right">S/ {{ b.priceBlock | number:'1.2-2' }}</td>
+          <td><p-tag [value]="b.status" [severity]="b.status === 'Disponible' ? 'success' : 'warn'" /></td>
+          <td>
+            <p-button icon="pi pi-trash" severity="danger" [text]="true" [rounded]="true"
+                      pTooltip="Eliminar" (onClick)="confirmDeleteBlock(b)" />
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="empty">
+        <tr><td colspan="4" class="text-center py-4" style="color:var(--text-color-secondary)">
+          Sin bloques para esta fecha
+        </td></tr>
+      </ng-template>
+    </p-table>
+  }
+
+  <!-- ═══════════ TAB: Temporadas ═══════════ -->
+  @if (tab() === 'seasonal') {
+    <div class="flex justify-end mb-3">
+      <p-button label="Nueva Temporada" icon="pi pi-plus" (onClick)="openSeasonCreate()" />
+    </div>
+
+    <p-table [value]="seasons()" [loading]="loadingSeasons()" styleClass="p-datatable-sm">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Nombre</th>
+          <th>Inicio</th>
+          <th>Fin</th>
+          <th class="text-center">Multiplicador</th>
+          <th>Estado</th>
+          <th style="width: 8rem">Acciones</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-s>
+        <tr>
+          <td class="font-semibold">{{ s.name }}</td>
+          <td>{{ s.startDate }}</td>
+          <td>{{ s.endDate }}</td>
+          <td class="text-center">
+            <span class="mult-badge" [class.discount]="s.priceMultiplier < 1">×{{ s.priceMultiplier }}</span>
+          </td>
+          <td><p-tag [value]="s.active ? 'Activa' : 'Inactiva'" [severity]="s.active ? 'success' : 'danger'" /></td>
+          <td>
+            <div class="flex gap-2">
+              <p-button icon="pi pi-pencil" severity="info" [text]="true" [rounded]="true"
+                        pTooltip="Editar" (onClick)="openSeasonEdit(s)" />
+              @if (s.active) {
+                <p-button icon="pi pi-trash" severity="danger" [text]="true" [rounded]="true"
+                          pTooltip="Desactivar" (onClick)="confirmDeleteSeason(s)" />
+              }
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="empty">
+        <tr><td colspan="6" class="text-center py-4" style="color:var(--text-color-secondary)">
+          Sin temporadas para este tipo de habitación
+        </td></tr>
+      </ng-template>
+    </p-table>
+  }
+</div>
+
+<!-- ── Drawer temporada ─────────────────────────────────────── -->
+<p-drawer [header]="editingSeasonId ? 'Editar Temporada' : 'Nueva Temporada'"
+          [(visible)]="seasonDrawer" position="right" [modal]="true"
+          [style]="{ width: '420px' }">
+
+  <div class="flex flex-col gap-4">
+    @if (seasonError()) {
+      <p-message severity="error" [text]="seasonError()" />
+    }
+
+    <div class="flex flex-col gap-1">
+      <label class="font-medium text-sm">Nombre *</label>
+      <input pInputText [(ngModel)]="seasonForm.name" class="w-full" placeholder="Ej: Fiestas Patrias" />
+    </div>
+
+    <div class="flex gap-3">
+      <div class="flex flex-col gap-1 flex-1">
+        <label class="font-medium text-sm">Inicio *</label>
+        <input type="date" class="native-date w-full" [(ngModel)]="seasonForm.startDate" />
+      </div>
+      <div class="flex flex-col gap-1 flex-1">
+        <label class="font-medium text-sm">Fin *</label>
+        <input type="date" class="native-date w-full" [(ngModel)]="seasonForm.endDate" />
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label class="font-medium text-sm">Multiplicador de precio *</label>
+      <p-inputNumber [(ngModel)]="seasonForm.priceMultiplier" [min]="0.1" [max]="10"
+                     [maxFractionDigits]="2" [step]="0.1" [showButtons]="true" styleClass="w-full" />
+      <small style="color: var(--text-color-secondary)">
+        ×1.5 = +50% sobre el precio base · ×0.8 = descuento del 20%
+      </small>
+    </div>
+  </div>
+
+  <div class="flex justify-end gap-2 pt-4 mt-4" style="border-top:1px solid var(--surface-border)">
+    <p-button label="Cancelar" icon="pi pi-times" severity="secondary" (onClick)="seasonDrawer.set(false)" />
+    <p-button [label]="editingSeasonId ? 'Guardar cambios' : 'Crear'" icon="pi pi-check"
+              (onClick)="saveSeason()" [loading]="savingSeason()" />
+  </div>
+</p-drawer>

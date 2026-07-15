@@ -1,9 +1,15 @@
+<p-toast />
+<p-confirmDialog [draggable]="false" />
+
 <div class="bookings-page">
 
   <div class="page-header">
     <div>
       <h1 class="page-title">Gestión de Reservas</h1>
-      <p class="page-subtitle">Consulta y administra todas las reservas de la plataforma</p>
+      <p class="page-subtitle">
+        @if (isAdmin()) { Todas las reservas de la plataforma }
+        @else { Reservas de tus hoteles }
+      </p>
     </div>
   </div>
 
@@ -26,28 +32,48 @@
           <tr>
             <th>Código</th>
             <th>Huésped</th>
-            <th>Email</th>
-            <th>Habitación</th>
+            <th>Habitación / Hotel</th>
             <th>Check-in</th>
             <th>Check-out</th>
             <th class="text-right">Total (PEN)</th>
             <th>Tipo</th>
             <th>Estado</th>
+            <th style="width:10rem">Cambiar estado</th>
           </tr>
         </ng-template>
 
         <ng-template pTemplate="body" let-b>
           <tr>
             <td><code class="ref-code">{{ b.referenceCode }}</code></td>
-            <td>{{ b.guestName ?? '—' }}</td>
-            <td>{{ b.guestEmail }}</td>
-            <td>{{ b.roomNumber }} / {{ b.roomTypeName }}</td>
+            <td>
+              <div>{{ b.guestName ?? '—' }}</div>
+              <small style="color:var(--text-color-secondary)">{{ b.guestEmail }}</small>
+              @if (b.guestPhone) {
+                <small style="color:var(--text-color-secondary); display:block">📞 {{ b.guestPhone }}</small>
+              }
+            </td>
+            <td>
+              <div>{{ b.roomNumber }} · {{ b.roomTypeName }}</div>
+              <small style="color:var(--text-color-secondary)">{{ b.hotelName }}</small>
+            </td>
             <td>{{ b.checkInDate | date:'dd/MM/yy' }}</td>
             <td>{{ b.checkOutDate ? (b.checkOutDate | date:'dd/MM/yy') : '—' }}</td>
             <td class="text-right"><strong>{{ b.totalAmount | number:'1.2-2' }}</strong></td>
             <td>{{ b.bookingType === 'NIGHTLY' ? 'Noche' : 'Horas' }}</td>
             <td>
               <p-tag [value]="statusLabel(b.status)" [severity]="statusSeverity(b.status)" />
+            </td>
+            <td>
+              <p-select
+                [(ngModel)]="pendingStatus[b.id]"
+                [options]="statusOptions"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Acción"
+                styleClass="w-full"
+                appendTo="body"
+                [disabled]="updatingId === b.id || b.status === 'COMPLETED' || b.status === 'CANCELLED'"
+                (onChange)="onStatusSelect(b, $event.value)" />
             </td>
           </tr>
         </ng-template>

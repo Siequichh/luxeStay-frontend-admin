@@ -22,6 +22,8 @@ export interface HotelResponse {
   // Resto
   timezone:       string;
   starRating:     number | null;
+  latitude:       number | null;
+  longitude:      number | null;
   active:         boolean;
   roomTypeCount:  number;
   roomCount:      number;
@@ -33,6 +35,19 @@ export interface UpdateHotelRequest {
   address?:     string;
   reniecCode?:  string;
   starRating?:  number;
+  latitude?:    number | null;
+  longitude?:   number | null;
+}
+
+export interface CreateHotelRequest {
+  name:        string;
+  description: string;
+  address:     string;
+  reniecCode:  string;
+  starRating?: number;
+  latitude?:   number | null;
+  longitude?:  number | null;
+  timezone?:   string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -66,5 +81,13 @@ export class HotelService {
 
   updateMyHotel(id: number, req: UpdateHotelRequest): Observable<HotelResponse> {
     return this.http.put<HotelResponse>(`${environment.apiUrl}/manager/hotels/${id}`, req);
+  }
+
+  create(req: CreateHotelRequest): Observable<HotelResponse> {
+    return this.http.post<HotelResponse>(this.base, req);
+  }
+
+  deactivate(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${id}`);
   }
 }
